@@ -1,0 +1,1 @@
+// Purpose: Handles frontend events, form submissions, and API calls (fetch) for this module.

@@ -1,0 +1,1 @@
+// Purpose: Defines the database schema (data structure) for this module.
