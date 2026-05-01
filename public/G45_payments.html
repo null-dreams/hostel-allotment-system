@@ -2,3 +2,141 @@
 Purpose: The main user interface page for this module.
 Note: Must include the shared syle.css and standard Navbar.
 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Management | LNMIIT</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/G45_style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+</head>
+<body>
+    <div class ="container">
+        <header class="header">
+            <h1>Fees and Payments</h1>
+            <p class="subtitle">Manage student hostel dues, process payments, and generate digital receipts.</p>
+        </header>
+
+        <!-- ADMIN ANALYTICS DASHBOARD (Hidden for students) -->
+        <div id="adminAnalytics" class="G45-hidden" style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px dashed #e2e8f0;">
+            <h2 style="color: var(--primary); margin-bottom: 20px;">Hostel Financial Overview</h2>
+            
+            <div class="grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr;">
+                <div class="card" style="padding: 20px;">
+                    <p class="subtitle" style="font-size: 12px;">Total Expected Revenue</p>
+                    <h3 id="statExpected" style="margin: 5px 0;">₹0</h3>
+                </div>
+                <div class="card" style="padding: 20px; border-top-color: #166534;">
+                    <p class="subtitle" style="font-size: 12px;">Total Collected</p>
+                    <h3 id="statCollected" style="margin: 5px 0; color: #166534;">₹0</h3>
+                </div>
+                <div class="card" style="padding: 20px; border-top-color: #be123c;">
+                    <p class="subtitle" style="font-size: 12px;">Total Outstanding</p>
+                    <h3 id="statPending" style="margin: 5px 0; color: #be123c;">₹0</h3>
+                </div>
+                <div class="card" style="padding: 10px; display: flex; justify-content: center;">
+                    <!-- The Canvas for the Pie Chart -->
+                    <canvas id="paymentPieChart" style="max-height: 120px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <!--- Search and settings section -->
+            <div class="grid" id="adminControlPanel">
+
+                <!--  Search Section -->
+                <section class="card">
+                    <h3>Student Fee Lookup</h3>
+                    <p class="subtitle">Search your enrollment number to view current dues and transaction history.</p>
+                    
+                    <div class="G45-search-box">
+                        <input type="text" id="studentIdInput" class="G45-search-input" placeholder="Enter Student ID(e.g. 24UCS001)">
+                        <button id="search_btn" class="btn btn-primary" onclick="searchStudent()">Find Record</button>
+                    </div>
+                </section>
+
+                <!-- 2. Admin Settings Section (Hidden from Students) -->
+                <section class="card" id="adminSettingsCard" class="G45-hidden">
+                    <h3>⚙️ Global Fee Settings</h3>
+                    <p class="subtitle">Set the deadline and penalty amount for late fees.</p>
+                    
+                    <div class="G45-settings-wrapper">
+                        <div>
+                            <label class="G45-label" for="dueDateInput">Deadline Date</label>
+                            <input type="date" id="dueDateInput" class="G45-input-full G45-m-0">
+                        </div>
+                        <div>
+                            <label class="G45-label" for="penaltyAmountInput">Penalty Amount (₹)</label>
+                            <input type="number" id="penaltyAmountInput" class="G45-input-full G45-m-0" placeholder="e.g. 1000">
+                        </div>
+                        <button class="btn G45-btn-warning" onclick="saveSettings()">Update Settings</button>
+                    </div>
+                </section>
+            </div>
+
+
+
+         <div id="studentRecord" class="G45-result-view"> 
+
+            <!-- Summary Dashboard -->
+            <div class="grid G45-summary">
+                <div class="card">
+                    <p class="subtitle">Total Semester Bill</p>
+                    <span class="G45-amount-display" id="totalBill">₹0</span>
+                </div>
+                <div class="card">
+                    <p class="subtitle">Amount Paid</p>
+                    <span class="G45-summary-val G45-status-paid" id="paidAmount">₹0</span>
+                </div>
+                <div class="card">
+                    <p class="subtitle">Remaining Balance</p>
+                    <span class="G45-summary-val G45-status-pending" id="balanceAmount">₹0</span>
+                </div>
+            </div>
+
+            <!-- Payment and transaction History Section -->
+             <div class="grid G45-action-container">
+                
+                <!-- Payment Input Form -->
+                <div class="card">
+                    <h3>Deposit Fee</h3>
+                    <div class="G45-form-group">
+                        <label for="pay_amt" class="G45-label">Amount (INR)</label>
+                        <input type="number" id="pay_amt" class="G45-input-full">
+                        
+                        <label for="pay_mode" class="G45-label">Payment Method</label>
+                        <select id="pay_mode" class="G45-input-full">
+                            <option value="UPI">UPI / QR Code</option>
+                            <option value="Net Banking">Net Banking</option>
+                            <option value="Card">Debit / Credit Card</option>
+                        </select>
+
+                        <button id="confirm_pay_btn" class="btn btn-primary G45-btn-block" onclick="processPayment()">Confirm Transaction</button>
+                    </div>
+                </div>
+
+                <!-- Transaction Log Table -->
+                 <div class="card">
+                    <h3>Transaction History</h3>
+                    <table class="G45-history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyRows">
+                            <!-- Populated by G45_script.js -->
+                        </tbody>
+                    </table>
+                </div>
+        </div>
+    </div>
+    <script src="js/navbar.js"></script>
+    <script src="js/G45_script.js"></script>
+</body>
+</html>

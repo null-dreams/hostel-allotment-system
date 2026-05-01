@@ -10,9 +10,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.5.0",
+    "pdfkit": "^0.18.0",
+    "qr": "^0.5.5",
+    "qrcode": "^1.5.4",
     "rxpress": "^0.3.0"
   },
   "devDependencies": {

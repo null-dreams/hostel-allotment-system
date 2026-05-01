@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Failed</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+            max-width: 420px;
+            width: 100%;
+            border-top: 8px solid #dc2626;
+        }
+
+        .icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            color: #dc2626;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            color: #64748b;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            font-size: 12px;
+            margin-top: 25px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="icon">❌</div>
+        <h1>Verification Failed</h1>
+            <p id="message">{{MESSAGE}}</p>
+        <p class="footer">LNMIIT Security System</p>
+    </div>
+</body>
+</html>

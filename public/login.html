@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | LNMIIT Hostel Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            background-color: var(--bg); 
+            margin: 0;
+        }
+        .login-box { 
+            background: white; 
+            padding: 50px 40px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            text-align: center; 
+            width: 100%; 
+            max-width: 420px; 
+            border-top: 8px solid var(--primary);
+        }
+        .logo { font-size: 28px; font-weight: 800; color: var(--primary); margin-bottom: 5px; }
+        .subtitle { color: var(--text-light); margin-bottom: 40px; font-size: 0.95rem;}
+        
+        .login-btn { 
+            width: 100%; 
+            padding: 14px; 
+            font-size: 1.05rem; 
+            margin-bottom: 15px; 
+            border-radius: 8px;
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 30px 0;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .divider:not(:empty)::before { margin-right: .25em; }
+        .divider:not(:empty)::after { margin-left: .25em; }
+
+        .student-input { 
+            width: 100%; 
+            padding: 14px; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            box-sizing: border-box; 
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-box">
+        <div class="logo">LNMIIT HOSTEL</div>
+        <p class="subtitle">Select your portal to continue</p>
+
+        <!-- Admin Login -->
+        <button class="btn btn-primary login-btn" onclick="loginAs('admin')">
+            🔒 Login as Warden (Admin)
+        </button>
+
+        <div class="divider">OR</div>
+
+        <!-- Student Login -->
+        <div style="text-align: left;">
+            <label style="font-size: 0.85rem; color: var(--text-light); font-weight: 600; margin-bottom: 8px; display: block;">STUDENT LOGIN</label>
+            <input type="text" id="loginStudentId" class="student-input" placeholder="Enter Roll No (e.g. 24UCS001)">
+            
+            <button class="btn login-btn" style="background: var(--accent); color: var(--primary); font-weight: bold;" onclick="loginAs('student')">
+                View My Ledger
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // If already logged in, redirect away from login page
+        if (localStorage.getItem('userRole') === 'admin') {
+            window.location.href = 'index.html';
+        } else if (localStorage.getItem('userRole') === 'student') {
+            window.location.href = 'G45_payments.html';
+        }
+
+        function loginAs(role) {
+            if (role === 'admin') {
+                localStorage.setItem('userRole', 'admin');
+                localStorage.removeItem('activeStudentId'); 
+                window.location.href = 'index.html';
+            } else if (role === 'student') {
+                const id = document.getElementById('loginStudentId').value.trim().toUpperCase();
+                if (!id) return alert("Please enter your Student ID.");
+                
+                localStorage.setItem('userRole', 'student');
+                localStorage.setItem('activeStudentId', id);
+                window.location.href = 'G45_payments.html'; 
+            }
+        }
+    </script>
+</body>
+</html>

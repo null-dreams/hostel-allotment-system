@@ -84,6 +84,14 @@ body {
     color: var(--accent); 
 }
 
+/* Active link highlight */
+.links a.active {
+    color: var(--accent);
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 5px;
+    opacity: 1;
+}
+
 .logo { 
     font-size: 1.4rem; 
     font-weight: 800; 

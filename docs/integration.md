@@ -43,7 +43,8 @@ We are using a shared MongoDB Atlas cluster. To keep data consistent across modu
 *   **Required Fields for others:** `studentId`, `complaintStatus`.
 
 ## 4. UI Standards
-*   **Stylesheet:** Use only the classes defined in `/public/css/style.css`.
+*   **Stylesheet:** Use only the classes defined in `/public/css/style.css`.detailed guide in docs/UI_KIT.md
+
 *   **Navigation:** DO NOT write your own navbar. Include `<script src="js/navbar.js"></script>` at the bottom of your HTML to automatically inject the shared header.
 
 ## 5. Development Workflow

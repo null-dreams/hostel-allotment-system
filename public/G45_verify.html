@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Verification | LNMIIT</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f8fafc; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .verify-card { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            text-align: center; 
+            max-width: 400px; 
+            width: 90%; 
+            border-top: 8px solid #166534; 
+        }
+        .icon { 
+            font-size: 60px; 
+            margin-bottom: 15px; 
+            line-height: 1;
+        }
+        h1 { 
+            color: #166534; 
+            margin-top: 0; 
+            margin-bottom: 5px;
+            font-size: 26px; 
+            font-weight: 800;
+        }
+        .subtitle {
+            color: #64748b; 
+            margin-bottom: 35px;
+            font-size: 14px;
+        }
+        .detail-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 14px 0; 
+            border-bottom: 1px dashed #e2e8f0; 
+            font-size: 15px; 
+            text-align: left;
+        }
+        .detail-row:last-of-type { 
+            border-bottom: none; 
+            margin-bottom: 20px;
+        }
+        .label { 
+            color: #64748b; 
+            font-weight: 500; 
+        }
+        .value { 
+            font-weight: 700; 
+            color: #1e293b; 
+        }
+        .val-amount {
+            color: #166534;
+            font-size: 18px;
+        }
+        .footer { 
+            margin-top: 30px; 
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px; 
+            color: #94a3b8; 
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="verify-card">
+        <div class="icon">✅</div>
+        <h1>Receipt Verified</h1>
+        <p class="subtitle">This transaction is officially recorded in the LNMIIT Hostel Ledger.</p>
+        
+        <div class="detail-row">
+            <span class="label">Student ID</span>
+            <span class="value">{{STUDENT_ID}}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Transaction Ref</span>
+            <span class="value" style="font-size: 13px;">{{TXN_ID}}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Date Recorded</span>
+            <span class="value">{{DATE}}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Amount Paid</span>
+            <span class="value val-amount">₹{{AMOUNT}}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Ledger Status</span>
+            <span class="value">{{STATUS}}</span>
+        </div>
+
+        <div class="footer">
+            LNMIIT Secure Verification System
+        </div>
+    </div>
+</body>
+</html>
