@@ -2,3 +2,70 @@
 Purpose: The main user interface page for this module.
 Note: Must include the shared syle.css and standard Navbar.
 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Allotment | Module 3</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/G44_style.css">
+</head>
+<body>
+    
+    <main class="container">
+        <div class="header">
+            <h1>Room Allotment Management</h1>
+            <p class="subtitle">Assign rooms to students based on their academic year.</p>
+        </div>
+        
+        <!-- ROOM ASSIGNMENT FORM -->
+        <div class="card G44-form-container">
+            <h3>Assign a Room</h3>
+            <form id="allotmentForm">
+                <div class="G44-input-group">
+                    <label for="studentId">Student ID:</label>
+                    <input type="text" id="studentId" required placeholder="e.g., 24UCS001">
+                </div>
+                <div class="G44-input-group">
+                    <label for="roomNumber">Room Number:</label>
+                    <input type="text" id="roomNumber" required placeholder="e.g., A-101">
+                </div>
+                <div class="G44-input-group">
+                    <label for="academicYear">Academic Year:</label>
+                    <select id="academicYear" required>
+                        <option value="">Select Year...</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Allocate Room</button>
+            </form>
+            <div id="form-message" style="margin-top: 15px; font-weight: bold;"></div>
+        </div>
+
+        <!-- CURRENT ALLOTMENTS TABLE -->
+        <div class="card G44-list-container" style="margin-top: 30px;">
+            <h3>Current Room Allotments</h3>
+            <table class="G44-table" id="allotmentsTable">
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Room No.</th>
+                        <th>Academic Year</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="allotmentsTableBody">
+                    <!-- Data injected via JS -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script src="js/G44_script.js"></script>
+    <script src="js/navbar.js"></script>
+</body>
+</html>

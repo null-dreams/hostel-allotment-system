@@ -19,7 +19,7 @@ app.use(express.static('public')); // This tells the server where the HTML files
 // --- API ROUTES
 // app.use('/api/g42', require('./routes/G42_studentRoutes'));
 // app.use('/api/g43', require('./routes/G43_roomRoutes'));
-// app.use('/api/g44', require('./routes/G44_allotmentRoutes'));
+app.use('/api/g44', require('./routes/G44_allotmentRoutes'));
 app.use('/api/g45', require('./routes/G45_paymentRoutes')); 
 // app.use('/api/g46', require('./routes/G46_complaintRoutes'));
 

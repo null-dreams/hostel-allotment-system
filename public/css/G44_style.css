@@ -1,0 +1,18 @@
+.G44-form-container { max-width: 600px; margin: 0 auto; text-align: left; }
+.G44-form-container h3 { text-align: center; margin-bottom: 20px; }
+.G44-input-group { margin-bottom: 20px; }
+.G44-input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark); }
+.G44-input-group input, .G44-input-group select {
+    width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem;
+    box-sizing: border-box; transition: 0.3s;
+}
+.G44-input-group input:focus, .G44-input-group select:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 51, 102, 0.1);
+}
+.G44-form-container .btn { width: 100%; padding: 12px; margin-top: 10px; }
+#form-message { text-align: center; padding: 10px; border-radius: 6px; }
+
+/* Table Styles */
+.G44-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; }
+.G44-table th, .G44-table td { padding: 12px; border-bottom: 1px solid #ddd; }
+.G44-table th { background-color: var(--primary); color: white; }
