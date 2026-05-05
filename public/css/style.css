@@ -44,6 +44,11 @@ body {
     margin-bottom: 10px;
 } 
 
+.header h2 {
+    color: var(--primary);
+    margin-bottom: 20px;
+}
+
 
 .header .subtitle {
     color: var(--text-light);

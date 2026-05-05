@@ -49,12 +49,12 @@ startProject();
 // ==========================================
 // HUTDOWN
 // ==========================================
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
     console.log("🛑 Shutting down server...");
     const mongoose = require('mongoose');
-    if(mongoose) {
-        await mongoose.connection.close();
-        console.log("✅ MongoDB Connection closed.");
+    if (mongoose.connection.readyState !== 0) {
+        mongoose.connection.close();
+        console.log("✅ MongoDB connection closing...");
     }
-    process.exit(0);
+    process.exit(0); 
 });

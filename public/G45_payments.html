@@ -21,8 +21,8 @@ Note: Must include the shared syle.css and standard Navbar.
         </header>
 
         <!-- ADMIN ANALYTICS DASHBOARD (Hidden for students) -->
-        <div id="adminAnalytics" class="G45-hidden" style="margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px dashed #e2e8f0;">
-            <h2 style="color: var(--primary); margin-bottom: 20px;">Hostel Financial Overview</h2>
+        <div id="adminAnalytics" class="G45-hidden" >
+            <h2>Hostel Financial Overview</h2>
             
             <div class="grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr;">
                 <div class="card" style="padding: 20px;">
@@ -52,13 +52,13 @@ Note: Must include the shared syle.css and standard Navbar.
                     <p class="subtitle">Search your enrollment number to view current dues and transaction history.</p>
                     
                     <div class="G45-search-box">
-                        <input type="text" id="studentIdInput" class="G45-search-input" placeholder="Enter Student ID(e.g. 24UCS001)">
+                        <input type="text" id="studentIdInput" class="G45-search-input" placeholder="Enter Student ID(e.g. 24UCS001)" required>
                         <button id="search_btn" class="btn btn-primary" onclick="searchStudent()">Find Record</button>
                     </div>
                 </section>
 
                 <!-- 2. Admin Settings Section (Hidden from Students) -->
-                <section class="card" id="adminSettingsCard" class="G45-hidden">
+                <section id="adminSettingsCard" class="G45-hidden">
                     <h3>⚙️ Global Fee Settings</h3>
                     <p class="subtitle">Set the deadline and penalty amount for late fees.</p>
                     
@@ -104,7 +104,7 @@ Note: Must include the shared syle.css and standard Navbar.
                     <h3>Deposit Fee</h3>
                     <div class="G45-form-group">
                         <label for="pay_amt" class="G45-label">Amount (INR)</label>
-                        <input type="number" id="pay_amt" class="G45-input-full">
+                        <input type="number" id="pay_amt" min="1" class="G45-input-full" required>
                         
                         <label for="pay_mode" class="G45-label">Payment Method</label>
                         <select id="pay_mode" class="G45-input-full">

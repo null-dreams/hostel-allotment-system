@@ -1,5 +1,8 @@
 // Purpose: The "Brain" of the module—handles calculating dues and recording payments.
+//  Handles calculating dues, tracking payments, integrating with external modules, and generating PDF receipts.
 // Includes robust fallback logic to handle incomplete data from other groups.
+
+
 const PDFDocument = require('pdfkit'); 
 const fs = require('fs');
 const path = require('path');
@@ -9,33 +12,39 @@ const G45_Payment = require('../models/G45_Payment');
 const G44_Allotment = require('../models/G44_Allotment'); // Integration: Who stays where
 const G43_Room = require('../models/G43_Room');           // Integration: Room prices
 const G42_Student = require('../models/G42_Student');    // Integration: Student exists or not
-const G45_Settings = require('../models/G45_Settings'); 
+const G45_Settings = require('../models/G45_Settings'); // Admin configrations
 
 /**
- * GET: Fetches or initializes a student's fee ledger.
+ * Fetches or initializes a student's fee ledger.
+ * Features: G42 Validation, Dynamic Late Fees (Apply/Revoke/Adjust), and G43/G44 Fallback Integration
  * Robustness: If G44 or G43 data is missing, it defaults to a 40k bill.
  */
 
 exports.getRecord = async (req, res) => {
     try {
-        const id = req.params.id.toUpperCase();
-        console.log(`🔍 [G45] Request for: ${id}`);
 
-        // 1. GATE: Verify Student exists (G42)
+        // Safety check to prevent crashes if ID is missing or undefined
+        if (!req.params.id || req.params.id === "undefined") {
+            return res.status(400).json({ message: "Invalid Student ID provided." });
+        }
+
+        const id = req.params.id.toUpperCase();
+        console.log(`🔍 [G45] Searching ledger for: ${id}`);
+
+        // GATE: Verify Student exists in database (G42)
         const studentExists = await G42_Student.findOne({ studentId: id }).lean();
         if (!studentExists) {
             return res.status(404).json({ message: "Student record not found in College Database (G42)." });
         }
 
-        // 2. CHECK LOCAL RECORD
+        // CHECK LOCAL RECORD
         let record = await G45_Payment.findOne({ studentId: id });
 
         if (record) {
-            console.log(`✅ [G45] Found record for ${id}. Checking Late Fee rules...`);
+            console.log(`✅ [G45] Found record for ${id}.`);
 
-            // --- SMART LATE FEE LOGIC ---
+            // Dyanamic late fee logic and adjustments
             const settings = await G45_Settings.findOne().lean(); 
-            console.log("📊 Settings fetched.");
 
             const DUE_DATE = settings && settings.lateFeeDueDate ? new Date(settings.lateFeeDueDate) : new Date("2026-05-10");
             const currentPenalty = (settings && settings.lateFeeAmount) ? Number(settings.lateFeeAmount) : 1000;
@@ -43,7 +52,7 @@ exports.getRecord = async (req, res) => {
 
             let isModified = false;
 
-            // Scenario: Apply Fine
+            /// SCENARIO 1: Past deadline, NO fine applied yet -> Apply it
             if (TODAY > DUE_DATE && record.balance > 0 && !record.lateFeeApplied) {
                 console.log("⚠️ Deadline passed. Applying penalty.");
                 record.totalAmount += currentPenalty;
@@ -53,10 +62,10 @@ exports.getRecord = async (req, res) => {
                 record.history.push({ amountPaid: currentPenalty, paymentMethod: 'System Fine', transactionId: 'LATE_' + Date.now() });
                 isModified = true;
             }
-            // Scenario: Revoke Fine
+            // SCENARIO 2: Deadline extended, but fine WAS applied -> Revoke it completely
             else if (TODAY <= DUE_DATE && record.lateFeeApplied) {
-                console.log("⏪ Deadline extended. Revoking penalty.");
                 const refund = record.lateFeeAmountApplied || 1000;
+                                console.log(`⏪ [G45] Deadline extended. Revoking fine of ₹${refund}.`);
                 record.totalAmount -= refund;
                 record.balance -= refund;
                 record.lateFeeApplied = false;
@@ -64,7 +73,7 @@ exports.getRecord = async (req, res) => {
                 record.history.push({ amountPaid: refund, paymentMethod: 'Fee Reversal', transactionId: 'REVOKE_' + Date.now() });
                 isModified = true;
             }
-            // Scenario: Adjust Fine
+            // SCENARIO 3: Past deadline, fine WAS applied, but Warden changed the penalty amount -> Adjust it
             else if (TODAY > DUE_DATE && record.lateFeeApplied && Number(record.lateFeeAmountApplied) !== currentPenalty) {
                 const applied = Number(record.lateFeeAmountApplied || 0);
                 const diff = currentPenalty - applied;
@@ -81,34 +90,47 @@ exports.getRecord = async (req, res) => {
             }
 
             if (isModified) {
-                console.log("💾 Saving updates to Database...");
                 await record.save();
-                console.log("✅ Save Complete.");
             }
 
             const responseData = record.toObject();
             responseData.integrationStatus = "SUCCESS";
-            console.log("📡 [G45] Sending Response to Frontend.");
             return res.status(200).json(responseData);
         }
 
-        // 3. INITIALIZE NEW RECORD (Integration Logic)
-        console.log(`🆕 Initializing new record for ${id}...`);
+        // 3. INITIALIZE NEW RECORD (If no record exists, fetch from G44/G43)
+
         let roomPrice = 40000; 
+        let integrationStatus = "SUCCESS"; 
+
         try {
             const allotment = await G44_Allotment.findOne({ studentId: id });
+
             if (allotment) {
                 const room = await G43_Room.findOne({ roomNumber: allotment.roomNumber });
-                if (room && room.baseRent) roomPrice = room.baseRent;
+                if (room && room.baseRent) {
+                    roomPrice = room.baseRent;
+                    console.log(`🔗 [G45] Integration Success: Fetched price ₹${roomPrice} for room ${allotment.roomNumber}`)
+                } else {
+                    console.warn(`⚠️ [G45] G43 Price not found. Using default 40k.`);
+                    integrationStatus = "FALLBACK_G43_MISSING";
+                }
+            } else {
+                console.warn(`⚠️ [G45] No Allotment found for ${id} in G44. Using default 40k.`);
+                integrationStatus = "FALLBACK_G44_MISSING";
             }
         } catch (e) { console.log("⚠️ Integration sub-query failed."); }
 
+              console.log(`🆕 [G45] Initializing new ledger for ${id} with ₹${roomPrice}`);
         const newRecord = new G45_Payment({
             studentId: id,
             totalAmount: roomPrice,
             balance: roomPrice,
             status: 'Pending'
         });
+
+        const responseData = newRecord.toObject();
+        responseData.integrationStatus = integrationStatus;
 
         await newRecord.save();
         console.log("✅ [G45] New Record created successfully.");
@@ -121,12 +143,15 @@ exports.getRecord = async (req, res) => {
 };
 
 /**
- * POST: Processes a payment, updates balance, and records history.
+ * Processes a financial transaction, validates against overpayments, updates ledger balances, and appends to the transaction history.
  */
 exports.processPayment = async (req, res) => {
     try {
         let { studentId, amount, method } = req.body;
-        console.log(`💰 [G45] Processing payment: ₹${amount} for ${studentId}`);
+
+         if (!studentId || !amount || isNaN(amount) || amount <= 0) {
+            return res.status(400).json({ message: "Invalid payment payload received." });
+        }
 
         studentId = studentId.toUpperCase(); 
         console.log(`💰 [G45] Processing payment: ₹${amount} for ${studentId}`);
@@ -134,6 +159,7 @@ exports.processPayment = async (req, res) => {
         const record = await G45_Payment.findOne({ studentId });
         if (!record) return res.status(404).json({ message: "Student record not found." });
 
+        // Overpayment function
         if (Number(amount) > record.balance) {
             console.warn(`⚠️ [G45] Overpayment attempted. Due: ${record.balance}, Attempted: ${amount}`);
              return res.status(400).json({ 
@@ -148,12 +174,12 @@ exports.processPayment = async (req, res) => {
         // Update Status Label
         if (record.balance <= 0) {
             record.status = 'Paid';
-            record.balance = 0; // Prevent negative balance
+            record.balance = 0; 
         } else if (record.paidAmount > 0) {
             record.status = 'Partial';
         }
 
-        // Add to Transaction History Array (Requirement: Track payments)
+        // Add to Transaction History Array
         record.history.push({
             amountPaid: amount,
             paymentMethod: method,
@@ -172,7 +198,8 @@ exports.processPayment = async (req, res) => {
 };
 
 /** 
- * GET: Generates and downloads a PDF report for a specific transaction
+ * Generates and downloads a PDF report for a specific transaction using PDFKit
+ *  Embeds a dynamic QR Code for anti-fraud verification.
  */
 
 exports.generatePDFReceipt = async (req, res) => {
@@ -180,7 +207,7 @@ exports.generatePDFReceipt = async (req, res) => {
         const { studentId, txnId } = req.params;
         const sId = studentId.toUpperCase();
 
-        // 1. Fetch Data
+        //  Fetch Data
         const record = await G45_Payment.findOne({ studentId: sId });
         if (!record) return res.status(404).send("Record not found.");
 
@@ -191,7 +218,7 @@ exports.generatePDFReceipt = async (req, res) => {
         const allotment = await G44_Allotment.findOne({ studentId: sId }).lean();
         const roomDisplay = allotment ? `Room ${allotment.roomNumber}` : 'Pending Allotment';
 
-        // 2. Set up the PDF Document (A5 size)
+        // Set up the PDF Document (A5 size)
         const doc = new PDFDocument({ margin: 50, size: 'A5' });
 
         res.setHeader('Content-Type', 'application/pdf');
@@ -268,7 +295,7 @@ exports.generatePDFReceipt = async (req, res) => {
         doc.text(`Student ID:`, leftX, startY + 20);
         doc.font('Helvetica-Bold').text(`${sId}`, leftX + valueOffset, startY + 20);
         
-        // 🏨 DYNAMIC HOSTEL & ROOM LOGIC
+        //  DYNAMIC HOSTEL & ROOM LOGIC
         doc.font('Helvetica').text(`Hostel Phase:`, leftX, startY + 35);
 
         if (!allotment) {
@@ -277,17 +304,24 @@ exports.generatePDFReceipt = async (req, res) => {
             doc.fillColor('#333333').font('Helvetica').text(`Room No:`, leftX, startY + 50);
             doc.fillColor('#b45309').font('Helvetica-Bold').text('Pending', leftX + valueOffset, startY + 50);
         } else {
-            // Case 2: They have an allotment. Let's try to find the Hostel Name.
-            // First check if G44 provided it. If not, check if we fetched it from G43 earlier.
-            // If neither provided it, use a generic "Allocated" text.
+        // Case 2: The user has been allotted a hostel.
+        // Attempt to determine the hostel name by first checking if it is available in G44.
+        // If not found there, fall back to the value previously retrieved from G43.
+        // If the hostel name is unavailable from both sources, display a default "Allocated" label.
             
             let hostelName = "Allocated (Pending Details)"; 
-            if (allotment.hostelName) {
+            if (allotment?.hostelName) {
                 hostelName = allotment.hostelName;
+            } else if(allotment?.studentId){
+                // Check db using student id to check hostel
+                const student = await G42_Student.findOne({ studentId: allotment.studentId }).lean();
+                if (student?.allocatedHostel) {
+                    hostelName = student.allocatedHostel;
+                } else {
+                    // Fallback if student record doesn't have hostel info
+                    hostelName = "LNMIIT Campus Hostel";
+                }
             } else {
-                // If you want, you can fetch G43 data here to see if G43 stores the hostel name
-                // const roomDetails = await G43_Room.findOne({ roomNumber: allotment.roomNumber }).lean();
-                // if (roomDetails && roomDetails.hostelName) hostelName = roomDetails.hostelName;
                 hostelName = "LNMIIT Campus Hostel"; // A safe, generic fallback
             }
 
@@ -355,6 +389,10 @@ exports.generatePDFReceipt = async (req, res) => {
     }
 };
 
+/**
+The QR Code validation endpoint. Reads a local HTML template and injects live database data to prove the receipt's authenticity.
+ */
+
 exports.verifyReceipt = async (req, res) => {
     try {
         const { studentId, txnId } = req.params;
@@ -403,7 +441,8 @@ exports.verifyReceipt = async (req, res) => {
 };
 
 /**
- * GET: Fetches aggregate data for the Admin Analytics Dashboard
+ * Fetches aggregate data for the Admin Analytics Dashboard
+ * Calculates total expected revenue, collected revenue, and categorical status counts.
  */
 exports.getAnalytics = async (req, res) => {
     try {
@@ -414,8 +453,8 @@ exports.getAnalytics = async (req, res) => {
         let statusCounts = { Paid: 0, Partial: 0, Pending: 0 };
 
         records.forEach(r => {
-            totalExpected += r.totalAmount;
-            totalCollected += r.paidAmount;
+            totalExpected += Math.round(r.totalAmount);
+            totalCollected += Math.round(r.paidAmount);
             if (r.status === 'Paid') statusCounts.Paid++;
             else if (r.status === 'Partial') statusCounts.Partial++;
             else statusCounts.Pending++;
@@ -434,7 +473,8 @@ exports.getAnalytics = async (req, res) => {
 };
 
 /**
- * GET/POST: Admin Settings for Late Fees
+ * Fetches the global configuration settings for Late Fees. 
+ * Initializes default settings if none exist in the database.
  */
 exports.getSettings = async (req, res) => {
     try {
@@ -449,6 +489,7 @@ exports.getSettings = async (req, res) => {
     }
 };
 
+// Allows the Warden to update the global Late Fee deadline and penalty amount.
 exports.updateSettings = async (req, res) => {
     try {
         const { lateFeeDueDate, lateFeeAmount } = req.body;
@@ -456,7 +497,7 @@ exports.updateSettings = async (req, res) => {
         
         if (settings) {
             settings.lateFeeDueDate = new Date(lateFeeDueDate);
-            if (lateFeeAmount) settings.lateFeeAmount = lateFeeAmount;
+            if (lateFeeAmount) settings.lateFeeAmount = Number(lateFeeAmount);
             await settings.save();
         } else {
             settings = await G45_Settings.create({ lateFeeDueDate: new Date(lateFeeDueDate) });

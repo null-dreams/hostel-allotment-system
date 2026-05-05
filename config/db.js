@@ -1,15 +1,17 @@
 // Purpose: Manages the connection to the MongoDB database for all modules.
 
+
 const mongoose = require('mongoose');
 
 
 const connectDB = async () => {
+    // Ensure connection string exists
      if (!process.env.MONGO_URL) {
         console.error("❌ ERROR: MONGO_URL is not defined in .env file.");
         process.exit(1);
     }
     try {
-        // We use the MONGO_URI from the .env file
+        // Attempt connection
         await mongoose.connect(process.env.MONGO_URL);
         console.log("✅ Shared MongoDB Connected Successfully!");
     } catch (err) {
