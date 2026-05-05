@@ -7,6 +7,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 
 const G45_Payment = require('../models/G45_Payment');
 const G44_Allotment = require('../models/G44_Allotment'); // Integration: Who stays where
@@ -23,15 +24,13 @@ const G45_Settings = require('../models/G45_Settings'); // Admin configrations
 exports.getRecord = async (req, res) => {
     try {
 
-        // Safety check to prevent crashes if ID is missing or undefined
-        if (!req.params.id || req.params.id === "undefined") {
-            return res.status(400).json({ message: "Invalid Student ID provided." });
+        const role = req.headers['x-user-role'];
+        const reqStudentId = req.headers['x-student-id'];
+        if (role !== 'admin' && reqStudentId !== id) {
+            return res.status(403).json({ message: "Forbidden: You are not authorized to view this record." });
         }
 
-        const id = req.params.id.toUpperCase();
-        console.log(`🔍 [G45] Searching ledger for: ${id}`);
-
-        // GATE: Verify Student exists in database (G42)
+        // 1. GATE: Verify Student exists (G42)
         const studentExists = await G42_Student.findOne({ studentId: id }).lean();
         if (!studentExists) {
             return res.status(404).json({ message: "Student record not found in College Database (G42)." });
@@ -41,10 +40,11 @@ exports.getRecord = async (req, res) => {
         let record = await G45_Payment.findOne({ studentId: id });
 
         if (record) {
-            console.log(`✅ [G45] Found record for ${id}.`);
+            console.log(`[G45] Found record for ${id}. Checking Late Fee rules...`);
 
-            // Dyanamic late fee logic and adjustments
+            // --- LATE FEE LOGIC ---
             const settings = await G45_Settings.findOne().lean(); 
+            console.log("Settings fetched.");
 
             const DUE_DATE = settings && settings.lateFeeDueDate ? new Date(settings.lateFeeDueDate) : new Date("2026-05-10");
             const currentPenalty = (settings && settings.lateFeeAmount) ? Number(settings.lateFeeAmount) : 1000;
@@ -54,52 +54,56 @@ exports.getRecord = async (req, res) => {
 
             /// SCENARIO 1: Past deadline, NO fine applied yet -> Apply it
             if (TODAY > DUE_DATE && record.balance > 0 && !record.lateFeeApplied) {
-                console.log("⚠️ Deadline passed. Applying penalty.");
+                console.log("Deadline passed. Applying penalty.");
                 record.totalAmount += currentPenalty;
                 record.balance += currentPenalty;
                 record.lateFeeApplied = true;
                 record.lateFeeAmountApplied = currentPenalty;
-                record.history.push({ amountPaid: currentPenalty, paymentMethod: 'System Fine', transactionId: 'LATE_' + Date.now() });
+                record.history.push({ amountPaid: currentPenalty, paymentMethod: 'System Fine', transactionId: 'LATE_' + crypto.randomBytes(8).toString('hex') });
                 isModified = true;
             }
             // SCENARIO 2: Deadline extended, but fine WAS applied -> Revoke it completely
             else if (TODAY <= DUE_DATE && record.lateFeeApplied) {
+                console.log("Deadline extended. Revoking penalty.");
                 const refund = record.lateFeeAmountApplied || 1000;
                                 console.log(`⏪ [G45] Deadline extended. Revoking fine of ₹${refund}.`);
                 record.totalAmount -= refund;
                 record.balance -= refund;
                 record.lateFeeApplied = false;
                 record.lateFeeAmountApplied = 0;
-                record.history.push({ amountPaid: refund, paymentMethod: 'Fee Reversal', transactionId: 'REVOKE_' + Date.now() });
+                record.history.push({ amountPaid: refund, paymentMethod: 'Fee Reversal', transactionId: 'REVOKE_' + crypto.randomBytes(8).toString('hex') });
                 isModified = true;
             }
             // SCENARIO 3: Past deadline, fine WAS applied, but Warden changed the penalty amount -> Adjust it
             else if (TODAY > DUE_DATE && record.lateFeeApplied && Number(record.lateFeeAmountApplied) !== currentPenalty) {
                 const applied = Number(record.lateFeeAmountApplied || 0);
                 const diff = currentPenalty - applied;
-                console.log(`⚖️ Adjusting penalty by ${diff}`);
+                console.log(`Adjusting penalty by ${diff}`);
                 record.totalAmount += diff;
                 record.balance += diff;
                 record.lateFeeAmountApplied = currentPenalty;
                 record.history.push({ 
                     amountPaid: Math.abs(diff), 
                     paymentMethod: diff > 0 ? 'System Fine (Adjustment)' : 'Fee Reversal (Adjustment)', 
-                    transactionId: 'ADJ_' + Date.now() 
+                    transactionId: 'ADJ_' + crypto.randomBytes(8).toString('hex') 
                 });
                 isModified = true;
             }
 
             if (isModified) {
+                console.log("Saving updates to Database...");
                 await record.save();
+                console.log("Save Complete.");
             }
 
             const responseData = record.toObject();
             responseData.integrationStatus = "SUCCESS";
+            console.log("Sending Response to Frontend.");
             return res.status(200).json(responseData);
         }
 
-        // 3. INITIALIZE NEW RECORD (If no record exists, fetch from G44/G43)
-
+        // 3. INITIALIZE NEW RECORD (Integration Logic)
+        console.log(`Initializing new record for ${id}...`);
         let roomPrice = 40000; 
         let integrationStatus = "SUCCESS"; 
 
@@ -119,7 +123,7 @@ exports.getRecord = async (req, res) => {
                 console.warn(`⚠️ [G45] No Allotment found for ${id} in G44. Using default 40k.`);
                 integrationStatus = "FALLBACK_G44_MISSING";
             }
-        } catch (e) { console.log("⚠️ Integration sub-query failed."); }
+        } catch (e) { console.log("Integration sub-query failed."); }
 
               console.log(`🆕 [G45] Initializing new ledger for ${id} with ₹${roomPrice}`);
         const newRecord = new G45_Payment({
@@ -133,11 +137,11 @@ exports.getRecord = async (req, res) => {
         responseData.integrationStatus = integrationStatus;
 
         await newRecord.save();
-        console.log("✅ [G45] New Record created successfully.");
+        console.log("New Record created successfully.");
         return res.status(201).json(newRecord);
 
     } catch (err) {
-        console.error("❌ CRITICAL SERVER ERROR:", err);
+        console.error("CRITICAL SERVER ERROR:", err);
         if (!res.headersSent) return res.status(500).json({ message: "Server Error", error: err.message });
     }
 };
@@ -149,26 +153,39 @@ exports.processPayment = async (req, res) => {
     try {
         let { studentId, amount, method } = req.body;
 
-         if (!studentId || !amount || isNaN(amount) || amount <= 0) {
-            return res.status(400).json({ message: "Invalid payment payload received." });
+        if (typeof studentId !== 'string') {
+            return res.status(400).json({ message: "Invalid Student ID format." });
+        }
+        
+        const role = req.headers['x-user-role'];
+        const reqStudentId = req.headers['x-student-id'];
+        if (role !== 'admin' && reqStudentId !== studentId.toUpperCase()) {
+            return res.status(403).json({ message: "Forbidden: You are not authorized to process payments for this record." });
         }
 
+        const allowedMethods = ['UPI', 'Net Banking', 'Card', 'OFFICE CASH'];
+        if (!allowedMethods.includes(method)) {
+            return res.status(400).json({ message: "Invalid payment method." });
+        }
+
+        console.log(`[G45] Processing payment: ₹${amount} for ${studentId}`);
+
         studentId = studentId.toUpperCase(); 
-        console.log(`💰 [G45] Processing payment: ₹${amount} for ${studentId}`);
+        console.log(`[G45] Processing payment: ₹${amount} for ${studentId}`);
 
         const record = await G45_Payment.findOne({ studentId });
         if (!record) return res.status(404).json({ message: "Student record not found." });
 
-        // Overpayment function
-        if (Number(amount) > record.balance) {
-            console.warn(`⚠️ [G45] Overpayment attempted. Due: ${record.balance}, Attempted: ${amount}`);
+        const value = Number(amount);
+        if (value > record.balance || value <= 0 || Number.isNaN(value)) {
+            console.warn(`[G45] Invalid payment attempted. Due: ${record.balance}, Attempted: ${amount}`);
              return res.status(400).json({ 
-                message: `Overpayment Error: The student only owes ₹${record.balance}. Please enter a valid amount.` 
+                message: `Invalid Payment: The student only owes ₹${record.balance}. Please enter a valid amount.` 
             });
         }
 
         // Update Financials
-        record.paidAmount += Number(amount);
+        record.paidAmount += value;
         record.balance = record.totalAmount - record.paidAmount;
 
         // Update Status Label
@@ -181,18 +198,18 @@ exports.processPayment = async (req, res) => {
 
         // Add to Transaction History Array
         record.history.push({
-            amountPaid: amount,
+            amountPaid: value,
             paymentMethod: method,
-            transactionId: "TXN" + Date.now()
+            transactionId: "TXN_" + crypto.randomBytes(8).toString('hex')
         });
 
         await record.save();
-        console.log(`✅ [G45] Payment successful. New balance: ₹${record.balance}`);
+        console.log(`[G45] Payment successful. New balance: ₹${record.balance}`);
         
         res.status(200).json({ message: "Payment recorded successfully", record });
 
     } catch (err) {
-        console.error("❌ [G45] Payment Processing Error:", err.message);
+        console.error("[G45] Payment Processing Error:", err.message);
         res.status(500).json({ message: "Payment Failed", error: err.message });
     }
 };
@@ -207,7 +224,13 @@ exports.generatePDFReceipt = async (req, res) => {
         const { studentId, txnId } = req.params;
         const sId = studentId.toUpperCase();
 
-        //  Fetch Data
+        const role = req.query.role;
+        const reqStudentId = req.query.reqStudentId;
+        if (role !== 'admin' && reqStudentId !== sId) {
+            return res.status(403).send("Forbidden: You are not authorized to download this receipt.");
+        }
+
+        // 1. Fetch Data
         const record = await G45_Payment.findOne({ studentId: sId });
         if (!record) return res.status(404).send("Record not found.");
 
@@ -296,7 +319,7 @@ exports.generatePDFReceipt = async (req, res) => {
         doc.font('Helvetica-Bold').text(`${sId}`, leftX + valueOffset, startY + 20);
         
         //  DYNAMIC HOSTEL & ROOM LOGIC
-        doc.font('Helvetica').text(`Hostel Phase:`, leftX, startY + 35);
+        doc.font('Helvetica').text(`Hostel Name:`, leftX, startY + 35);
 
         if (!allotment) {
             // Case 1: No Allotment at all (G44 empty)
@@ -493,14 +516,16 @@ exports.getSettings = async (req, res) => {
 exports.updateSettings = async (req, res) => {
     try {
         const { lateFeeDueDate, lateFeeAmount } = req.body;
+        const parsedAmount = Number(lateFeeAmount);
+        if(Number.isNaN(parsedAmount) || parsedAmount < 0) return res.status(400).json({message:"Late Fee must be a valid number."});
         let settings = await G45_Settings.findOne();
         
         if (settings) {
             settings.lateFeeDueDate = new Date(lateFeeDueDate);
-            if (lateFeeAmount) settings.lateFeeAmount = Number(lateFeeAmount);
+            settings.lateFeeAmount = parsedAmount;
             await settings.save();
         } else {
-            settings = await G45_Settings.create({ lateFeeDueDate: new Date(lateFeeDueDate) });
+            settings = await G45_Settings.create({ lateFeeDueDate: new Date(lateFeeDueDate), lateFeeAmount: parsedAmount });
         }
         res.status(200).json({ message: "Settings updated successfully", settings });
     } catch (err) {

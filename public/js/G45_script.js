@@ -5,6 +5,13 @@ document.addEventListener("DOMContentLoaded", () => {
     applyRoleBasedView();
 });
 
+function getAuthHeaders() {
+    return {
+        'x-user-role': localStorage.getItem('userRole') || '',
+        'x-student-id': localStorage.getItem('activeStudentId') || ''
+    };
+}
+
 function applyRoleBasedView() {
     const role = localStorage.getItem('userRole');
     
@@ -68,7 +75,7 @@ async function searchStudent() {
 
     try {
         console.log("🔍 [G45 Search] Requesting data for:", studentId); 
-        const response = await fetch(`/api/g45/record/${studentId}`);
+        const response = await fetch(`/api/g45/record/${encodeURIComponent(studentId)}`, { headers: getAuthHeaders() });
         const data = await response.json();
 
         if (response.ok) {
@@ -144,8 +151,10 @@ function displayStudentRecord(data) {
         sortedHistory.forEach(item => {
           let amountColor = '#166534'; // Default Green for payments
             let amountPrefix = '₹';
+            const role = localStorage.getItem('userRole') || '';
+            const activeId = localStorage.getItem('activeStudentId') || '';
             let actionButton = `
-                <a href="/api/g45/receipt/${data.studentId}/${item.transactionId}" 
+                <a href="/api/g45/receipt/${data.studentId}/${item.transactionId}?role=${encodeURIComponent(role)}&reqStudentId=${encodeURIComponent(activeId)}" 
                    target="_blank" 
                    class="btn btn-primary" 
                    style="padding: 5px 10px; font-size: 0.8rem; text-decoration: none; display: inline-block;">
@@ -163,11 +172,17 @@ function displayStudentRecord(data) {
                 actionButton = `<span style="color: #64748b; font-size: 0.8rem; font-style: italic;">Ledger Credit</span>`;
             }
 
+            const sanitize = (str) => {
+                const temp = document.createElement('div');
+                temp.textContent = str;
+                return temp.innerHTML;
+            };
+
             const row = `
                 <tr>
                     <td>${new Date(item.date).toLocaleDateString()}</td>
                     <td style="font-weight: bold; color: ${amountColor};">${amountPrefix}${item.amountPaid}</td>
-                    <td>${item.paymentMethod || 'UPI'}</td>
+                    <td>${sanitize(item.paymentMethod || 'UPI')}</td>
                     <td>${actionButton}</td>
                 </tr>`;
             tableBody.innerHTML += row;
@@ -189,7 +204,10 @@ async function processPayment() {
     try {
         const response = await fetch('/api/g45/pay', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                ...getAuthHeaders()
+            },
             body: JSON.stringify({ studentId, amount, method })
         });
 
@@ -249,7 +267,10 @@ async function fetchSettings() {
         if (data) {
             // Populate Date
             if (data.lateFeeDueDate) {
-                document.getElementById('dueDateInput').value = new Date(data.lateFeeDueDate).toISOString().split('T')[0];
+                const parsedDate = new Date(data.lateFeeDueDate);
+                if (!isNaN(parsedDate.getTime())) {
+                    document.getElementById('dueDateInput').value = parsedDate.toISOString().split('T')[0];
+                }
             }
             // Populate Amount
             if (data.lateFeeAmount) {
