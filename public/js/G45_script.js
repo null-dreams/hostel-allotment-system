@@ -74,33 +74,33 @@ async function searchStudent() {
     if (!studentId) return alert("Enter ID");
 
     try {
-        console.log("🔍 [G45 Search] Requesting data for:", studentId); 
+        console.log("[G45 Search] Requesting data for:", studentId); 
         const response = await fetch(`/api/g45/record/${encodeURIComponent(studentId)}`, { headers: getAuthHeaders() });
         const data = await response.json();
 
         if (response.ok) {
             // Check if this is a new record created via Fallback
             if (data.integrationStatus && data.integrationStatus.includes("FALLBACK")) {
-                console.warn(`⚠️ [G45 Integration] Using default price (₹${data.totalAmount}) because: ${data.integrationStatus}`);
+                console.warn(`[G45 Integration] Using default price (₹${data.totalAmount}) because: ${data.integrationStatus}`);
             } else if (data.integrationStatus === "SUCCESS") {
-                console.log("✅ [G45 Integration] Successfully linked with G43/G44 data.");
+                console.log("[G45 Integration] Successfully linked with G43/G44 data.");
             }
 
             displayStudentRecord(data);
         } else {
-            console.error("🚫 [G45 Search] Student not found:", data.message);
+            console.error("[G45 Search] Student not found:", data.message);
             alert(data.message);
         }
 
     } catch (err) {
-        console.error("❌ [G45 Search] Network/Server Error:", err);
+        console.error("[G45 Search] Network/Server Error:", err);
         alert("Server is not responding. Please check your connection.");
     }
 }
 
 //  UI RENDERING FUNCTION
 function displayStudentRecord(data) {
-    console.log("📊 [G45 UI] Rendering data:", data); 
+    console.log("[G45 UI] Rendering data:", data); 
     const recordView = document.getElementById('studentRecord');
     recordView.style.display = 'block';
 

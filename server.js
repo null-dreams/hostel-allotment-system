@@ -36,10 +36,10 @@ const startProject = async () => {
         // ONLY after DB is connected, we start the server
         const PORT = process.env.PORT || 3000;
         app.listen(PORT, '0.0.0.0', () => {
-            console.log(`🚀 Server running at http://localhost:${PORT}`);
+            console.log(`Server running at http://localhost:${PORT}`);
         });
     } catch (err) {
-        console.error("❌ CRITICAL: Server failed to start due to DB issues.");
+        console.error("CRITICAL: Server failed to start due to DB issues.");
         process.exit(1);
     }
 };
@@ -50,11 +50,11 @@ startProject();
 // HUTDOWN
 // ==========================================
 process.on('SIGINT', () => {
-    console.log("🛑 Shutting down server...");
+    console.log("Shutting down server...");
     const mongoose = require('mongoose');
     if (mongoose.connection.readyState !== 0) {
         mongoose.connection.close();
-        console.log("✅ MongoDB connection closing...");
+        console.log("MongoDB connection closing...");
     }
     process.exit(0); 
 });
