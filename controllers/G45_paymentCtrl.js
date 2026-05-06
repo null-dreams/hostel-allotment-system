@@ -23,9 +23,10 @@ const G45_Settings = require('../models/G45_Settings'); // Admin configrations
 
 exports.getRecord = async (req, res) => {
     try {
-
+        const id = req.params.id ? req.params.id.toUpperCase() : null;
         const role = req.headers['x-user-role'];
         const reqStudentId = req.headers['x-student-id'];
+
         if (role !== 'admin' && reqStudentId !== id) {
             return res.status(403).json({ message: "Forbidden: You are not authorized to view this record." });
         }
@@ -66,7 +67,7 @@ exports.getRecord = async (req, res) => {
             else if (TODAY <= DUE_DATE && record.lateFeeApplied) {
                 console.log("Deadline extended. Revoking penalty.");
                 const refund = record.lateFeeAmountApplied || 1000;
-                                console.log(`⏪ [G45] Deadline extended. Revoking fine of ₹${refund}.`);
+                                console.log(`[G45] Deadline extended. Revoking fine of ₹${refund}.`);
                 record.totalAmount -= refund;
                 record.balance -= refund;
                 record.lateFeeApplied = false;
@@ -114,18 +115,18 @@ exports.getRecord = async (req, res) => {
                 const room = await G43_Room.findOne({ roomNumber: allotment.roomNumber });
                 if (room && room.baseRent) {
                     roomPrice = room.baseRent;
-                    console.log(`🔗 [G45] Integration Success: Fetched price ₹${roomPrice} for room ${allotment.roomNumber}`)
+                    console.log(`[G45] Integration Success: Fetched price ₹${roomPrice} for room ${allotment.roomNumber}`)
                 } else {
-                    console.warn(`⚠️ [G45] G43 Price not found. Using default 40k.`);
+                    console.warn(`[G45] G43 Price not found. Using default 40k.`);
                     integrationStatus = "FALLBACK_G43_MISSING";
                 }
             } else {
-                console.warn(`⚠️ [G45] No Allotment found for ${id} in G44. Using default 40k.`);
+                console.warn(`[G45] No Allotment found for ${id} in G44. Using default 40k.`);
                 integrationStatus = "FALLBACK_G44_MISSING";
             }
         } catch (e) { console.log("Integration sub-query failed."); }
 
-              console.log(`🆕 [G45] Initializing new ledger for ${id} with ₹${roomPrice}`);
+              console.log(`[G45] Initializing new ledger for ${id} with ₹${roomPrice}`);
         const newRecord = new G45_Payment({
             studentId: id,
             totalAmount: roomPrice,
@@ -303,7 +304,7 @@ exports.generatePDFReceipt = async (req, res) => {
 
 
         // ==========================================
-        // 📋 4. TWO-COLUMN DETAILS SECTION
+        // 4. TWO-COLUMN DETAILS SECTION
         // ==========================================
         const startY = 125;
         const leftX = 40;
@@ -373,7 +374,7 @@ exports.generatePDFReceipt = async (req, res) => {
         doc.text(`Method:`, rightX, startY + 50).text(`${transaction.paymentMethod || 'UPI'}`, rightX + valueOffset, startY + 50);
 
         // ==========================================
-        // 💰 5. THE AMOUNT HIGHLIGHT BOX
+        // 5. THE AMOUNT HIGHLIGHT BOX
         // ==========================================
         doc.moveDown(4);
         doc.roundedRect(40, 220, 340, 50, 5).fillAndStroke('#f0fdf4', '#166534');
@@ -385,7 +386,7 @@ exports.generatePDFReceipt = async (req, res) => {
         doc.fontSize(8).fillColor('#166534').text('Digitally Verified Receipt', 40, 285);
 
         // ==========================================
-        // 📝 6. FOOTER
+        // 6. FOOTER
         // ==========================================
         doc.moveTo(40, 320).lineTo(380, 320).strokeColor('#e2e8f0').lineWidth(1).stroke();
         doc.fontSize(8).fillColor('#888888').font('Helvetica').text(
@@ -407,7 +408,7 @@ exports.generatePDFReceipt = async (req, res) => {
         doc.end();
 
     } catch (err) {
-        console.error("❌ [G45] PDF Generation Error:", err.message);
+        console.error("[G45] PDF Generation Error:", err.message);
         if (!res.headersSent) res.status(500).send("Error generating PDF receipt.");
     }
 };
@@ -425,7 +426,7 @@ exports.verifyReceipt = async (req, res) => {
         const record = await G45_Payment.findOne({ studentId: sId });
         
         // ----------------------------------------------------
-        // 🛑 THE ERROR UI (If Student or Transaction not found)
+        // THE ERROR UI (If Student or Transaction not found)
         // ----------------------------------------------------
         const sendErrorUI = (message) => {
             const filePath = path.join(__dirname, '../public/G45_error.html');
@@ -440,7 +441,7 @@ exports.verifyReceipt = async (req, res) => {
         if (!transaction) return sendErrorUI("This Transaction ID does not exist in our database. It may be fraudulent.");
 
         // ----------------------------------------------------
-        // ✅ THE SUCCESS UI
+        // THE SUCCESS UI
         // ----------------------------------------------------
         const filePath = path.join(__dirname, '../public/G45_verify.html');
         let htmlContent = fs.readFileSync(filePath, 'utf-8');
@@ -529,7 +530,7 @@ exports.updateSettings = async (req, res) => {
         }
         res.status(200).json({ message: "Settings updated successfully", settings });
     } catch (err) {
-        console.error("❌ Settings Update Error:", err);
+        console.error("Settings Update Error:", err);
         res.status(500).json({ error: err.message });
     }
 };
